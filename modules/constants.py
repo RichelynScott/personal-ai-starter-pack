@@ -1,7 +1,7 @@
 # CONSTANTS update these to fit your personal flow
 
 PERSONAL_AI_ASSISTANT_NAME = "Ada"
-HUMAN_COMPANION_NAME = "Dan"
+HUMAN_COMPANION_NAME = "Richie"
 
 CONVO_TRAIL_CUTOFF = 30
 
@@ -28,7 +28,7 @@ ASSISTANT_TYPE = "OpenAISuperPAF"
 
 # ---------------------------- PROMPT
 
-PERSONAL_AI_ASSISTANT_PROMPT_HEAD = f"""You are a friendly, ultra helpful, attentive, concise AI assistant named '{PERSONAL_AI_ASSISTANT_NAME}'.
+PERSONAL_AI_ASSISTANT_PROMPT_HEAD = f"""You are a friendly, ultra helpful, attentive, AI assistant named '{PERSONAL_AI_ASSISTANT_NAME}'.
 
 <instructions>
     <rule>You work with your human companion '{HUMAN_COMPANION_NAME}' to build, collaborate, and connect.</rule>

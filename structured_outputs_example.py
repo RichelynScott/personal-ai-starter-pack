@@ -60,7 +60,7 @@ def structured_output_tool_call():
         messages=[
             {
                 "role": "system",
-                "content": "You are a helpful assistant. The current date is August 6, 2024. You help users query for the data they are looking for by calling the query function.",
+                "content": "You are a helpful assistant. The current date is October 22, 2024. You help users query for the data they are looking for by calling the query function.",
             },
             {
                 "role": "user",

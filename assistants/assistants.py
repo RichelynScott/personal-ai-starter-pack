@@ -9,8 +9,8 @@ import os
 import json
 from datetime import datetime
 import assemblyai as aai
-from elevenlabs import play
-from elevenlabs.client import ElevenLabs
+#from elevenlabs import play
+#from elevenlabs.client import ElevenLabs
 from PIL import Image
 import subprocess
 from modules.constants import (
@@ -22,6 +22,13 @@ from modules.simple_llm import build_mini_model, build_new_gpt4o, prompt
 from dotenv import load_dotenv
 import openai
 from groq import Groq
+
+# New imports for gTTS and speech recognition
+from gtts import gTTS
+import io
+from pydub import AudioSegment
+from pydub.playback import play # as pydub_play
+#import speech_recognition as sr
 
 from modules.typings import (
     ConvertImageParams,
@@ -103,29 +110,79 @@ class PersonalAssistantFramework(abc.ABC):
 
 class AssElevenPAF(PersonalAssistantFramework):
     def setup(self):
-        aai.settings.api_key = os.getenv("ASSEMBLYAI_API_KEY")
-        self.elevenlabs_client = ElevenLabs(api_key=os.getenv("ELEVEN_API_KEY"))
+        # AssemblyAI setup (commented out)
+        # aai.settings.api_key = os.getenv("ASSEMBLYAI_API_KEY")
+
+        # Groq setup
+        self.groq_client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+
+        # OpenAI setup
+        openai.api_key = os.getenv("OPENAI_API_KEY")
+
         self.llm_model = build_mini_model()
 
     @PersonalAssistantFramework.timeit_decorator
     def generate_voice_audio(self, text: str):
-        audio_generator = self.elevenlabs_client.generate(
-            text=text,
-            voice=ELEVEN_LABS_PRIMARY_SOLID_VOICE,
-            model="eleven_turbo_v2",
-            stream=False,
-        )
-        audio_bytes = b"".join(list(audio_generator))
-        return audio_bytes
+        # ElevenLabs version (commented out)
+        # audio = generate(text=text, voice=self.eleven_voice, model="eleven_turbo_v2")
+        # return audio
+
+        # gTTS version
+        tts = gTTS(text=text, lang='en')
+        fp = io.BytesIO()
+        tts.write_to_fp(fp)
+        fp.seek(0)
+        return fp.read()
 
     @PersonalAssistantFramework.timeit_decorator
     def transcribe(self, file_path):
-        transcriber = aai.Transcriber()
-        transcript = transcriber.transcribe(file_path)
-        return transcript.text
+        # AssemblyAI transcription (commented out)
+        # transcriber = aai.Transcriber()
+        # transcript = transcriber.transcribe(file_path)
+        # return transcript.text
 
-    def speak(self, text: str):
-        audio = self.generate_voice_audio(text)
+        # Groq transcription
+        with open(file_path, "rb") as audio_file:
+            transcript = self.groq_client.audio.transcriptions.create(
+                model="whisper-large-v3-turbo",  # Using the fastest multilingual model
+                file=audio_file,
+                response_format="text",
+                # Optional parameters:
+                # language="en",  # Uncomment and set if you know the language
+                # temperature=0.0,  # Adjust between 0 and 1 for output control
+                # prompt="Your context or specific words here",  # Uncomment and set if needed
+            )
+        return transcript
+
+        # OpenAI transcription (commented out)
+        # with open(file_path, "rb") as audio_file:
+        #     transcript = openai.Audio.transcribe("whisper-1", audio_file)
+        # return transcript["text"]
+
+        # Free option: SpeechRecognition with Google Speech Recognition (commented out)
+        # recognizer = sr.Recognizer()
+        # with sr.AudioFile(file_path) as source:
+        #     audio_data = recognizer.record(source)
+        #     try:
+        #         text = recognizer.recognize_google(audio_data)
+        #         return text
+        #     except sr.UnknownValueError:
+        #         return "Speech Recognition could not understand the audio"
+        #     except sr.RequestError as e:
+        #         return f"Could not request results from Speech Recognition service; {e}"
+
+    def speak(self, text: str, speed: float = 1.0):
+        # Generate audio bytes using gTTS
+        audio_bytes = self.generate_voice_audio(text)
+        
+        # Convert bytes to AudioSegment
+        audio = AudioSegment.from_file(io.BytesIO(audio_bytes), format="mp3")
+        
+        # Speed up the audio
+        if speed != 1.0:
+            audio = audio.speedup(playback_speed=speed)
+        
+        # Play the audio
         play(audio)
 
     @PersonalAssistantFramework.timeit_decorator
@@ -142,21 +199,38 @@ class OpenAIPAF(PersonalAssistantFramework):
     def transcribe(self, file_path):
         with open(file_path, "rb") as audio_file:
             transcript = openai.audio.transcriptions.create(
-                model="whisper-1",  # this points to whisper v2. See Docs (https://platform.openai.com/docs/api-reference/audio/createTranscription)
+                model="whisper-1",  # this points to whisper v2 - Free OpenSource. See Docs (https://platform.openai.com/docs/api-reference/audio/createTranscription)
                 file=audio_file,
             )
         return transcript.text
 
     @PersonalAssistantFramework.timeit_decorator
     def generate_voice_audio(self, text: str):
-        response = openai.audio.speech.create(
-            model="tts-1-hd", voice="shimmer", input=text, response_format="aac"
-        )
-        audio_bytes = b"".join(list(response.iter_bytes()))
-        return audio_bytes
+        # OPTION 1: OpenAI TTS (commented out)
+        # response = openai.audio.speech.create(
+        #     model="tts-1-hd", voice="shimmer", input=text, response_format="aac"
+        # )
 
-    def speak(self, text: str):
-        audio = self.generate_voice_audio(text)
+        # OPTION 2: Free gTTS version
+        tts = gTTS(text=text, lang='en')
+        fp = io.BytesIO()
+        tts.write_to_fp(fp)
+        fp.seek(0)
+        return fp.read()
+
+    def speak(self, text: str, speed: float = 1.5):
+        # OPTION 1: OpenAI TTS (commented out)
+        # audio = self.generate_voice_audio(text)
+        # play(audio)
+
+        # OPTION 2: Free gTTS version
+        # Generate audio bytes using gTTS
+        audio_bytes = self.generate_voice_audio(text)
+        # Convert bytes to AudioSegment
+        audio = AudioSegment.from_file(io.BytesIO(audio_bytes), format="mp3")
+        # Speed up the audio
+        audio = audio.speedup(playback_speed=speed)
+        # Play the audio
         play(audio)
 
     @PersonalAssistantFramework.timeit_decorator
@@ -373,3 +447,7 @@ Calling..."""
         else:
             # just a normal thought
             return prompt(self.weak_model, thought)
+
+
+
+
